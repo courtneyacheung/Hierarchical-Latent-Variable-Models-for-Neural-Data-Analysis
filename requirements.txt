@@ -1,15 +1,9 @@
-math
-jax
+jaxlib
 numpy
 matplotlib
-vlgpax
 pandas
 typing
 scipy
 dataclasses
-functools
-warnings
-random
-time
 typer
-sklearn
+scikit-learn
