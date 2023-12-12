@@ -1,10 +1,10 @@
-Jax
+jax== 0.4.21
 jaxlib
 numpy
 matplotlib
 pandas
-typing
 scipy
 dataclasses
-typer
 scikit-learn
+typing-extensions
+typer
