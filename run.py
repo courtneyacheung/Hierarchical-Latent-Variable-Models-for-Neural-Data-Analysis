@@ -120,6 +120,7 @@ def main():
     ax[0].plot(new_z)  # latent
     ax[1].plot(y)  # spikes
     ax[2].imshow(y.T, aspect='auto')  # show spikes in heatmap
+    plt.show()
     
     # %% Setup inference
     ys = np.reshape(y,
@@ -144,11 +145,13 @@ def main():
     fig, ax = plt.subplots(2, 1, sharex='all')
     ax[0].plot(new_z[:500])
     ax[1].plot(session.z[:500])
+    plt.show()
 
     #10 trails turning left
     fig, ax = plt.subplots(2, 1, sharex='all')
     ax[0].plot(new_z[500:1000])
     ax[1].plot(session.z[500:1000])
+    plt.show()
 
 
 if __name__ == '__main__':
