@@ -1,3 +1,4 @@
+Jax
 jaxlib
 numpy
 matplotlib

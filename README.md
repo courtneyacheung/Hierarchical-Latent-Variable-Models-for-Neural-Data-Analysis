@@ -6,7 +6,7 @@ This project aims to learn latent neural trajectories (lower dimensional systems
 ## Running the project
 
 * To install the dependencies, run the following command from the root directory of the project: `pip install -r requirements.txt`
-* 
+* run run.py
 
 
 ## Reference
