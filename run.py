@@ -5,9 +5,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 import pandas as pd
 
-from vlgpax.model import Session
-from vlgpax.kernel import RBF, RFF
-from vlgpax import vi
+from src.model import Session
+from src.kernel import RBF, RFF
+from src import vi
 
 
 
