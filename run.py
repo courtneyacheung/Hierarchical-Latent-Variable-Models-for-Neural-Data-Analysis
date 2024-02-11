@@ -1,166 +1,63 @@
-import math
+from data_cleaning import region_in_good_cluster, region_search, data_cleaning
+import matplotlib.pyplot as plt
+from vlgpax.kernel import RBF, RFF
+from vlgpax import vi
+from einops import rearrange
 
-import jax.random
-import numpy as np
-from matplotlib import pyplot as plt
-import pandas as pd
+one = ONE(base_url='https://openalyx.internationalbrainlab.org', \
+          password='international', silent=True, cache_dir=ibl_cache)
 
-from src.model import Session
-from src.kernel import RBF, RFF
-from src import vi
+ba = AllenAtlas()
 
+#This is a function from the last year capstone group (Aryan Singh, Jad Makki, Saket Arora, Rishabh Viswanathan).
+#This is their GitHUb repository https://github.com/styyxofficial/DSC180B-Quarter-2-Project
+#We may create our onw function for plotting trajectories in future
+def plot_trajectories2L(z, choices, accuracy, bin_size):
+    first = True
+    first2= True
+    fig = go.Figure()
 
-
-random_seed = 0
-
-
-def main():
-    
-    #when turning right
-    np.random.seed(random_seed)
-    # %% Generate 2D sine wave latent trajectory
-    dt = 2 * math.pi * 2e-3  # stepsize
-    mini_T = 500 # length 10000
-    mini_t = np.arange(mini_T * dt, step=dt)  # time points
-    #5000 time points each with a length of dt
-    #z = np.column_stack([np.cos(0.5*t+1), np.sin(0.5*t+5)])
-    z = np.column_stack([0.06*(mini_t)**2, -0.06*(mini_t-3)**2+0.54])
-    # plot for right condition
-    plt.plot(z)
-    plt.gca().legend(('z1','z2'))
-    plt.show()
-
-
-    #when turning left
-    np.random.seed(random_seed)
-    # %% Generate 2D sine wave latent trajectory
-    dt = 2 * math.pi * 2e-3  # stepsize
-    mini_T = 500 # length 10000
-    mini_t = np.arange(mini_T * dt, step=dt)  # time points
-    #5000 time points each with a length of dt
-    #z = np.column_stack([np.cos(0.5*t+1), np.sin(0.5*t+5)])
-    z_2 = np.column_stack([-0.06*(mini_t-3)**2+0.54, 0.06*(mini_t)**2])
-    # plot for left condition
-    plt.plot(z_2)
-    plt.gca().legend(('z1','z2'))
-    plt.show()
-
-    #Generate 10 trials
-    right_lst = [0, 3, 5, 6, 7]
-
-    for i in range(10):
-        if i == 0:
-            new_z = z
-        elif i in right_lst:
-            new_z = np.vstack((new_z, z))
-        else:
-            new_z = np.vstack((new_z, z_2))
-    #plot for 10 trials
-    plt.plot(new_z)
-
-    # %% Generate Poisson observation
-    T = 5000 #5000
-    N = 10  # 10D number of cells
-    x = np.column_stack([new_z, np.ones(T)])  # Append a constant column for bias
-    #x is a matrix that contain z1, z2 columns, and a bias column
-    #C is similar to A (but it is a sort of transpose of A)
-    C = np.random.randn(x.shape[-1],
-                        N)  # Sample the loading matrix from Gaussian
-    #C has a dimension of 3(z1, z2, bias) * 10
-    C[-1, :] = -1.5  # less spikes per bin
-    #r is similar to big lambda n * T, our r is T * n
-    r = np.exp(x @ C)  # firing rate
-    y = np.random.poisson(r)  # spikes
-
-    spike_array = y.T
-
-    sum_lst = []
-    for i in range(50):
-        spk = np.sum(spike_array[:,100*i:100*(i+1)])
-        #print(spike_array[:,10*i:10*(i+1)])
-        sum_lst.append(spk)
-
-    #plot PSTH
-    plt.bar(np.arange(0, 5000, 100), sum_lst, width=100.0, edgecolor='black')
-    plt.title('Peri-Stimulus Time Histogram (PSTH)')
-    plt.xlabel('Time (100 ms)')
-    plt.ylabel('Num. spike occurrences at this time')
-    plt.show()
-
-    def plot_cell(cell_number):
-        rand_cell = list(y[:,cell_number-1])
-        right_avg_lst = []
-        left_avg_lst = []
-        for i in range(10):
-            if i in right_lst:
-                right_avg_lst.append(rand_cell[i*500:(i+1)*500])
+    for i in range(len(z)):
+        if ((choices[i]==1) & (accuracy[i]==1)):
+            if first:
+                fig.add_trace(go.Scatter3d(x=np.arange(-100, 1000, bin_size), y=z[i][:, 0], z=z[i][:, 1],
+                        mode='lines', line={'color':'blue', 'width':1}, legendgroup='right', name='Wheel Turned Right', showlegend=True))
+                first = False
             else:
-                left_avg_lst.append(rand_cell[i*500:(i+1)*500])
+                fig.add_trace(go.Scatter3d(x=np.arange(-100, 1000, bin_size), y=z[i][:, 0], z=z[i][:, 1],
+                            mode='lines', line={'color':'blue', 'width':1}, legendgroup='right', showlegend=False))
 
-        average_right = [sum(sub_list) / len(sub_list) for sub_list in zip(*right_avg_lst)]
-        average_left = [sum(sub_list) / len(sub_list) for sub_list in zip(*left_avg_lst)]
+        elif ((choices[i]==-1) & (accuracy[i]==1)):
+            if first2:
+                fig.add_trace(go.Scatter3d(x=np.arange(-100, 1000, bin_size), y=z[i][:, 0], z=z[i][:, 1],
+                        mode='lines', line={'color':'red', 'width':1}, legendgroup='left', name='Wheel Turned Left', showlegend=True))
+                first2 = False
+            else:
+                fig.add_trace(go.Scatter3d(x=np.arange(-100, 1000, bin_size), y=z[i][:, 0], z=z[i][:, 1],
+                            mode='lines', line={'color':'red', 'width':1}, legendgroup='left', showlegend=False))
+    fig.update_layout(scene = dict(
+                    xaxis_title='Time (ms)',
+                    yaxis_title='Latent Variable 1',
+                    zaxis_title='Latent Variable 2'),
+                    width=1000, height=1000, title='Latent Variables over Time'
+                    )
+    fig.show()
 
-        avg_col = np.column_stack([np.array(average_right), np.array(average_left)])
-        plt.plot(avg_col)
-        plt.gca().legend(('right','left'))
-        plt.xlabel('Time (1 ms)')
-        plt.ylabel('Averge Num. spike occurrences at this time')
-        plt.title('Individual cell across conditions (cell ' + str(cell_number) + ')')
-        plt.show()
+def train_model(sessionTrain, sessionTest, ys):
+  kernel = RBF(scale=1., lengthscale=0.3)#10 * dt)
+  sessionTrain, params = vi.fit(sessionTrain, n_factors=2, kernel=kernel, seed=0, max_iter=50, trial_length=ys[0].shape[1])#, GPFA=True)
+  z_train = rearrange(sessionTrain.z, '(trials time) lat -> trials time lat', time=ys[0].shape[1])
 
-    #plot for cell_1
-    plot_cell(1)
-    #plot for cell_3
-    plot_cell(3)
-    #plot for cell_6
-    plot_cell(6)    
+  # Infer latents of test data
+  sessionTest = vi.infer(sessionTest, params=params)
+  z_test = rearrange(sessionTest.z, '(trials time) lat -> trials time lat', time=ys[0].shape[1])
+  return z_train, z_test
 
-    # %% Draw all
-    fig, ax = plt.subplots(3, 1, sharex='all')
-    ax[0].plot(new_z)  # latent
-    ax[1].plot(y)  # spikes
-    ax[2].imshow(y.T, aspect='auto')  # show spikes in heatmap
-    plt.show()
-    
-    # %% Setup inference
-    ys = np.reshape(y,
-                    (10, T // 10, -1))  # Split the spike train into 10 trials
-    session = Session(dt)  # Construct a session.
-    # Session is the top level container of data. Two arguments, binsize and unit of time, are required at construction.
-    for i, y in enumerate(ys):
-        session.add_trial(i + 1, y=y)  # Add trials to the session.
-    # Trial is the basic unit of observation, regressor, latent factors and etc.
+acronym_7 = 'SCdg'
+insertions_7 = one.search_insertions(atlas_acronym=acronym_7, query_type='remote')
 
-    # %% Build the model
-    kernel = RBF(scale=1., lengthscale=100 * dt)  # RBF kernel
-    # key = jax.random.PRNGKey(0)
-    # kernel = RFF(key, 50, 1, scale=1., lengthscale=100 * dt)
-    session, params = vi.fit(session, n_factors=2, kernel=kernel, seed=random_seed, max_iter=50)
-    # `fit` requires the target `session`, the number of factors `n_factors`, and the `kernel` function.
-    # `kernel` is a kernel function or a list of them corresponding to the factors.
-    # RBF kernel is implemented in `gp.kernel`. You may write your own kernels.
-
-
-    #10 trails turning right
-    fig, ax = plt.subplots(2, 1, sharex='all')
-    ax[0].plot(new_z[:500])
-    ax[0].set_title('Simulated Trajectory (Trial 1)')
-
-    ax[1].plot(session.z[:500])
-    ax[1].set_title('Predicted Trajectory (Trial 1)')
-    ax[1].set_xlabel('Time (12 ms)')
-    plt.show()
-
-    #10 trails turning left
-    fig, ax = plt.subplots(2, 1, sharex='all')
-    ax[0].plot(new_z[500:1000])
-    ax[0].set_title('Simulated Trajectory (Trial 2)')
-
-    ax[1].plot(session.z[500:1000])
-    ax[1].set_title('Predicted Trajectory (Trial 2)')
-    ax[1].set_xlabel('Time (12 ms)')
-    plt.show()
-
-
-if __name__ == '__main__':
-    main()
+spikes, clusters_good, spikes_g, events, trials, contrast, choice, accuracy = region_search('SCdg', insertions_7, 25)
+sessionTrain, sessionTest, ys, num_train = data_cleaning('SCdg', spikes, clusters_good, spikes_g, events, trials)
+z_train, z_test = train_model(sessionTrain, sessionTest, ys)
+plot_trajectories2L(z_train, choice[:num_train], accuracy[:num_train], 0.05 *1000)
+plt.savefig('result/SCdg_model.png')
