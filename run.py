@@ -3,6 +3,14 @@ import matplotlib.pyplot as plt
 from vlgpax.kernel import RBF, RFF
 from vlgpax import vi
 from einops import rearrange
+from pathlib import Path
+from one.api import ONE
+from ibllib.atlas import AllenAtlas
+import plotly.graph_objects as go
+import numpy as np
+
+ibl_cache = Path.home() / 'Downloads' / 'IBL_Cache'
+ibl_cache.mkdir(exist_ok=True, parents=True)
 
 one = ONE(base_url='https://openalyx.internationalbrainlab.org', \
           password='international', silent=True, cache_dir=ibl_cache)
@@ -42,6 +50,7 @@ def plot_trajectories2L(z, choices, accuracy, bin_size):
                     width=1000, height=1000, title='Latent Variables over Time'
                     )
     fig.show()
+    fig.write_html('results/SCdg_trajectories_plot.html')
 
 def train_model(sessionTrain, sessionTest, ys):
   kernel = RBF(scale=1., lengthscale=0.3)#10 * dt)
@@ -60,4 +69,3 @@ spikes, clusters_good, spikes_g, events, trials, contrast, choice, accuracy = re
 sessionTrain, sessionTest, ys, num_train = data_cleaning('SCdg', spikes, clusters_good, spikes_g, events, trials)
 z_train, z_test = train_model(sessionTrain, sessionTest, ys)
 plot_trajectories2L(z_train, choice[:num_train], accuracy[:num_train], 0.05 *1000)
-plt.savefig('result/SCdg_model.png')

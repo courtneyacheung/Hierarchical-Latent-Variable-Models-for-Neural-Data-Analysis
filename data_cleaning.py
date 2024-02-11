@@ -17,7 +17,10 @@ import numpy as np
 from vlgpax.model import Session
 # import plotly.graph_objects as go
 import pandas as pd
+from pathlib import Path
 
+ibl_cache = Path.home() / 'Downloads' / 'IBL_Cache'
+ibl_cache.mkdir(exist_ok=True, parents=True)
 one = ONE(base_url='https://openalyx.internationalbrainlab.org', \
           password='international', silent=True, cache_dir=ibl_cache)
 
@@ -112,7 +115,7 @@ def data_cleaning(region_name, spikes, clusters_good, spikes_g, events, trials, 
   region_df = good_cluster_df[good_cluster_df['acronym']==region_name]
   region_idx = [i for i in range(len(cluster_id)) if cluster_id[i] in region_df['cluster_id'].to_list()]
   spike_df = spikes.to_df()
-  region_spike_df = spike_df[spike_df['clusters'].isin(SCdg_idx)]
+  region_spike_df = spike_df[spike_df['clusters'].isin(region_idx)]
   cluster_spike = region_spike_df.groupby('clusters')['times'].apply(list)
   bins_scale = np.arange(time_bin_start, time_bin_end, bin_size)
   total_cluster_spike = []
