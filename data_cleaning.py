@@ -107,13 +107,17 @@ def region_search(acronym, insertions, insertion_idx, label_quality=0.5, event_s
     trials = sl.trials
     return spikes, clusters_good, spikes_g, events, trials, contrast, choice, accuracy
 
-def data_cleaning(region_name, spikes, clusters_good, spikes_g, events, trials, bin_size = 0.05, time_bin_start = -0.1, time_bin_end = 1.05, time_window_start = 0, time_window_end = 1, random_seed = 0):
+def data_cleaning(region_name, spikes, clusters_good, spikes_g, events, trials, bin_size = 0.05, time_bin_start = -0.1, time_bin_end = 1, time_window_start = 0, time_window_end = 1, random_seed = 0, subregion = True):
   time_window = np.array([time_window_start, time_window_end])
-  events_tw = np.array([events+time_window[0], events+time_window[1]]).T
-  spike_count, cluster_id = get_spike_counts_in_bins(spikes_g['times'], spikes_g['clusters'], events_tw)
+  #events_tw = np.array([events+time_window[0], events+time_window[1]]).T
+  #spike_count, cluster_id = get_spike_counts_in_bins(spikes_g['times'], spikes_g['clusters'], events_tw)
+  cluster_id = np.unique(spikes_g['clusters'])
   good_cluster_df = pd.DataFrame(clusters_good)
-  region_df = good_cluster_df[good_cluster_df['acronym']==region_name]
-  region_idx = [i for i in range(len(cluster_id)) if cluster_id[i] in region_df['cluster_id'].to_list()]
+  if subregion:
+    region_df = good_cluster_df[good_cluster_df['acronym']==region_name]
+    region_idx = [id for id in cluster_id if id in region_df['cluster_id'].unique()]
+  else:
+    region_idx = cluster_id
   spike_df = spikes.to_df()
   region_spike_df = spike_df[spike_df['clusters'].isin(region_idx)]
   cluster_spike = region_spike_df.groupby('clusters')['times'].apply(list)
@@ -122,22 +126,19 @@ def data_cleaning(region_name, spikes, clusters_good, spikes_g, events, trials, 
   for i in range(len(trials['firstMovement_times'])): #iterate through each trial
     filter_cluster_spike = []
     for j in cluster_spike:#iterate through each cluster's spike time
-      sp = (j>=trials['firstMovement_times'][i]-0.1)&(j<=trials['firstMovement_times'][i]+1)#i
-      #print(sp)
+      sp = (j>=trials['firstMovement_times'][i]+time_bin_start)&(j<=trials['firstMovement_times'][i]+time_bin_end)#i
       new_bin = bins_scale+trials['firstMovement_times'][i]#22bins
-      #print(np.array(i)[sp])
       bins_count = np.histogram(np.array(j)[sp],bins=new_bin)#spike split by 22 and count for each bin in that trial
-      #print(bins_count[0])
       filter_cluster_spike.append(bins_count[0])
     total_cluster_spike.append(filter_cluster_spike)
   total_cluster_spike = np.array(total_cluster_spike)
   y = total_cluster_spike#spike_count_per_bin_SCdg#spike_count_per_bin_STR
-  T = total_cluster_spike.shape[1]#spike_count_per_bin_SCdg.shape[1] #5520*0.1/10 = 55.2
+  #T = total_cluster_spike.shape[1]#spike_count_per_bin_SCdg.shape[1] #5520*0.1/10 = 55.2
   dt = bin_size
   random_seed = random_seed
   num_trials = total_cluster_spike.shape[0]
   ys = y
-  session = Session(dt)  # Construct a session.
+  #session = Session(dt)  # Construct a session.
 
   #Create training and testing data
   num_train = int(num_trials*0.75)
