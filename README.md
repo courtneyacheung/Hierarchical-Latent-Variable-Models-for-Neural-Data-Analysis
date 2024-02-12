@@ -9,8 +9,6 @@ This project focuses on understanding neural coding, where the brain encodes sen
 
 * To get the data and trajectories results from models, run `python run.py`
   - This fetches the data, cleans data, run models and saves the result in results directory.
-* To get the plots of EDA, run `python eda.py`
-  - This fetches the data, cleans data, run EDA functions and saves the result in the results directory.
 
 
 ## Reference
