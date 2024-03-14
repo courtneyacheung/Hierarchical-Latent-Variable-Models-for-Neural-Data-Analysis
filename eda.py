@@ -15,6 +15,8 @@ from brainbox.singlecell import bin_spikes
 ibl_cache = Path.home() / 'Downloads' / 'IBL_Cache'
 ibl_cache.mkdir(exist_ok=True, parents=True)
 
+ONE.setup(silent=True)
+
 one = ONE(base_url='https://openalyx.internationalbrainlab.org', \
           password='international', silent=True, cache_dir=ibl_cache)
 
@@ -34,11 +36,11 @@ random_seed = 0
 
 def main():
 
-    acronym = 'STR'
+    acronym = 'SCdg'
     insertions = one.search_insertions(atlas_acronym=acronym, query_type='remote')
 
     # Select your PID
-    pid = insertions[23] #10
+    pid = insertions[32] #SCdg
 
 
     # ---------------------------------------------------
@@ -90,12 +92,12 @@ def main():
     indx_choice_a = np.where(choice == -1)[0] #turning left
     indx_choice_b = np.where(choice == 1)[0] #turning right
 
-    good_cluster_idx = clusters['label'] == 1
+    good_cluster_idx = clusters['label'] ==1
     clusters_good = {key:val[good_cluster_idx] for key, val in clusters.items()}
+    good_cluster_df = pd.DataFrame(clusters_good)
 
-    id = 266
-
-    spikes_idx = spikes['clusters'] == id
+    SCdg_df = good_cluster_df[good_cluster_df['acronym']=='SCdg']
+    SCiw_df = good_cluster_df[good_cluster_df['acronym']=='SCiw']
     
     def single_cluster_raster(spike_times, events, trial_idx, dividers, colors, labels, weights=None, fr=True,
                                 norm=False, axs=None):
@@ -175,103 +177,534 @@ def main():
         return ax
     
 
+    # only for SCdg region, firstMovement_times, directions
+    for ids in np.array(SCdg_df['cluster_id'].index):
+
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
+
+        xlabel='T from First Move (s)'
+        label='T from First Move (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
+
+        trial_idx, dividers = find_trial_ids(sl.trials, sort='side', order=order)
+        fig, axs = single_cluster_raster(
+                    spikes.times[spikes_idx], sl.trials['firstMovement_times'], trial_idx, dividers, ['g', 'y'], ['left', 'right'])
+       
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
+
+        filename_raster = f'results/first_movement_decision_SCdg_{ids}.png'
+        
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_raster, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
+        
+
+
+    # only for SCiw, firstMovement_times, directions
+    for ids in np.array(SCiw_df['cluster_id'].index):
+
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
+
+        xlabel='T from First Move (s)'
+        label='T from First Move (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
+
+        trial_idx, dividers = find_trial_ids(sl.trials, sort='side', order=order)
+        
+        fig, axs = single_cluster_raster(
+                    spikes.times[spikes_idx], sl.trials['firstMovement_times'], trial_idx, dividers, ['g', 'y'], ['left', 'right'])
     
-    #for all region, firstMovement_times
-    order='trial num'
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
 
-    xlabel='T from First Move (s)'
-    label='T from First Move (s)'
-    ylabel0='Firing Rate (Hz)'
-    ylabel1='Sorted Trial Number'
+        filename_raster = f'results/first_movement_decision_SCiw_{ids}.png'
+            
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_raster, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
 
-    trial_idx, dividers = find_trial_ids(sl.trials, sort='side', order=order)
-    trial_idx2, dividers2 = find_trial_ids(sl.trials, sort='choice', order=order)
-    # single_cluster_raster(spike_times, events, trial_idx, dividers, colors, labels, weights=None, fr=True,
-    #                               norm=False, axs=None):
-    fig, axs = single_cluster_raster(
-                spikes.times, sl.trials['firstMovement_times'], trial_idx, dividers, ['g', 'y'], ['left', 'right'])
-    fig2, axs2 = single_cluster_raster(
-                spikes.times, sl.trials['firstMovement_times'], trial_idx2, dividers2, ['b', 'r'], ['correct', 'incorrect'])
+    # only for SCdg region, firstMovement_times, correctness 
+    for ids in np.array(SCdg_df['cluster_id'].index):
 
-    #sorted by visual stimulus contrasts (0, 6.25, 12.5, 25, 100%, from pale to dark gray) and aligned to the visual stimulus onset
-    contrasts = np.nanmean(np.c_[sl.trials.contrastLeft, sl.trials.contrastRight], axis=1)
-    trial_idx3 = np.argsort(contrasts)
-    dividers3 = list(np.where(np.diff(np.sort(contrasts)) != 0)[0])
-    labels = [str(_ * 100) for _ in np.unique(contrasts)]
-    colors = ['0.9', '0.7', '0.5', '0.3', '0.0']
-    fig3, axs3 = single_cluster_raster(spikes.times, sl.trials['firstMovement_times'], trial_idx3, dividers3, colors, labels)
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
 
-    set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1)
-    set_axis_style(axs[0], ylabel=ylabel0)
+        xlabel='T from First Move (s)'
+        label='T from First Move (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
 
-    set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1)
-    set_axis_style(axs[0], ylabel=ylabel0)
-    fig.savefig('results/first_movement_decision.png')
-    fig2.savefig('results/first_movement_feedback.png')
-    fig3.savefig('results/first_movement_contrast.png')
+        
+        trial_idx2, dividers2 = find_trial_ids(sl.trials, sort='choice', order=order)
+        
+        fig, axs = single_cluster_raster(
+                    spikes.times[spikes_idx], sl.trials['firstMovement_times'], trial_idx2, dividers2, ['b', 'r'], ['correct', 'incorrect'])
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
+    
+        filename_corr = f'results/first_movement_correctness_SCdg_{ids}.png'
+            
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_corr, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
+
+    # only for SCiw region, firstMovement_times, correctness 
+    for ids in np.array(SCiw_df['cluster_id'].index):
+
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
+
+        xlabel='T from First Move (s)'
+        label='T from First Move (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
+
+        
+        trial_idx2, dividers2 = find_trial_ids(sl.trials, sort='choice', order=order)
+        
+        fig, axs = single_cluster_raster(
+                    spikes.times[spikes_idx], sl.trials['firstMovement_times'], trial_idx2, dividers2, ['b', 'r'], ['correct', 'incorrect'])
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
+    
+        filename_corr = f'results/first_movement_correctness_SCiw_{ids}.png'
+            
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_corr, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
+
+    # only for SCdg region, firstMovement_times, contrasts
+    for ids in np.array(SCdg_df['cluster_id'].index):
+
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
+
+        xlabel='T from First Move (s)'
+        label='T from First Move (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
+        
+        contrasts = np.nanmean(np.c_[sl.trials.contrastLeft, sl.trials.contrastRight], axis=1)
+        trial_idx3 = np.argsort(contrasts)
+        dividers3 = list(np.where(np.diff(np.sort(contrasts)) != 0)[0])
+        labels = [str(_ * 100) for _ in np.unique(contrasts)]
+        colors = ['0.9', '0.7', '0.5', '0.3', '0.0']
+        fig, axs = single_cluster_raster(spikes.times[spikes_idx], sl.trials['firstMovement_times'], trial_idx3, dividers3, colors, labels)
+
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
+
+        filename_contrasts = f'results/first_movement_contrasts_SCdg_{ids}.png'
+            
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_contrasts, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
+
+    # only for SCiw region, firstMovement_times, contrasts
+    for ids in np.array(SCiw_df['cluster_id'].index):
+
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
+
+        xlabel='T from First Move (s)'
+        label='T from First Move (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
+        
+        contrasts = np.nanmean(np.c_[sl.trials.contrastLeft, sl.trials.contrastRight], axis=1)
+        trial_idx3 = np.argsort(contrasts)
+        dividers3 = list(np.where(np.diff(np.sort(contrasts)) != 0)[0])
+        labels = [str(_ * 100) for _ in np.unique(contrasts)]
+        colors = ['0.9', '0.7', '0.5', '0.3', '0.0']
+        fig, axs = single_cluster_raster(spikes.times[spikes_idx], sl.trials['firstMovement_times'], trial_idx3, dividers3, colors, labels)
+
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
+
+        filename_contrasts = f'results/first_movement_contrasts_SCiw_{ids}.png'
+            
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_contrasts, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
+
+    ########
+    #StimOn#
+    ########
+
+    # only for SCdg region, stimOn_times, directions
+    for ids in np.array(SCdg_df['cluster_id'].index):
+
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
+
+        xlabel='T from Stim On (s)'
+        label='T from Stim On (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
+
+        trial_idx, dividers = find_trial_ids(sl.trials, sort='side', order=order)
+        fig, axs = single_cluster_raster(
+                    spikes.times[spikes_idx], sl.trials['stimOn_times'], trial_idx, dividers, ['g', 'y'], ['left', 'right'])
+       
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
+
+        filename_raster = f'results/stimOn_times_decision_SCdg_{ids}.png'
+        
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_raster, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
+        
 
 
-    # all region, goCue_times: The start time of the go cue tone. This is the time the sound is actually played, that is, the command sent through soundcard sync was fed back into Bpod.
-    #for all region, stimOn_times
-    order='trial num'
+    # only for SCiw, stimOn_times, directions
+    for ids in np.array(SCiw_df['cluster_id'].index):
 
-    xlabel='T from Stim On(s)'
-    label='T from Stim On (s)'
-    ylabel0='Firing Rate (Hz)'
-    ylabel1='Sorted Trial Number'
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
 
-    trial_idx, dividers = find_trial_ids(sl.trials, sort='side', order=order)
-    trial_idx2, dividers2 = find_trial_ids(sl.trials, sort='choice', order=order)
-    # single_cluster_raster(spike_times, events, trial_idx, dividers, colors, labels, weights=None, fr=True,
-    #                               norm=False, axs=None):
-    fig, axs = single_cluster_raster(
-                spikes.times, sl.trials['stimOn_times'], trial_idx, dividers, ['g', 'y'], ['left', 'right'])
-    fig2, axs2 = single_cluster_raster(
-                spikes.times, sl.trials['stimOn_times'], trial_idx2, dividers2, ['b', 'r'], ['correct', 'incorrect'])
+        xlabel='T from Stim On(s)'
+        label='T from Stim On (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
 
-    contrasts = np.nanmean(np.c_[sl.trials.contrastLeft, sl.trials.contrastRight], axis=1)
-    trial_idx3 = np.argsort(contrasts)
-    dividers3 = list(np.where(np.diff(np.sort(contrasts)) != 0)[0])
-    labels = [str(_ * 100) for _ in np.unique(contrasts)]
-    colors = ['0.9', '0.7', '0.5', '0.3', '0.0']
-    fig3, axs3 = single_cluster_raster(spikes.times, sl.trials['stimOn_times'], trial_idx3, dividers3, colors, labels)
+        trial_idx, dividers = find_trial_ids(sl.trials, sort='side', order=order)
+        
+        fig, axs = single_cluster_raster(
+                    spikes.times[spikes_idx], sl.trials['stimOn_times'], trial_idx, dividers, ['g', 'y'], ['left', 'right'])
+    
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
 
-    set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1)
-    set_axis_style(axs[0], ylabel=ylabel0)
-    fig.savefig('results/stim_on_decision.png')
-    fig2.savefig('results/stim_on_feedback.png')
-    fig3.savefig('results/stim_on_contrast.png')
+        filename_raster = f'results/stimOn_times_decision_SCiw_{ids}.png'
+            
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_raster, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
 
-    # all region, feedback_times
-    order='trial num'
+    # only for SCdg region, stimOn_times, correctness 
+    for ids in np.array(SCdg_df['cluster_id'].index):
 
-    xlabel='T from Feedback(s)'
-    label='T from Feedback (s)'
-    ylabel0='Firing Rate (Hz)'
-    ylabel1='Sorted Trial Number'
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
 
-    trial_idx, dividers = find_trial_ids(sl.trials, sort='side', order=order)
-    trial_idx2, dividers2 = find_trial_ids(sl.trials, sort='choice', order=order)
-    # single_cluster_raster(spike_times, events, trial_idx, dividers, colors, labels, weights=None, fr=True,
-    #                               norm=False, axs=None):
-    fig, axs = single_cluster_raster(
-                spikes.times, sl.trials['feedback_times'], trial_idx, dividers, ['g', 'y'], ['left', 'right'])
-    fig2, axs2 = single_cluster_raster(
-                spikes.times, sl.trials['feedback_times'], trial_idx2, dividers2, ['b', 'r'], ['correct', 'incorrect'])
+        xlabel='T from Stim On(s)'
+        label='T from Stim On (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
 
-    contrasts = np.nanmean(np.c_[sl.trials.contrastLeft, sl.trials.contrastRight], axis=1)
-    trial_idx3 = np.argsort(contrasts)
-    dividers3 = list(np.where(np.diff(np.sort(contrasts)) != 0)[0])
-    labels = [str(_ * 100) for _ in np.unique(contrasts)]
-    colors = ['0.9', '0.7', '0.5', '0.3', '0.0']
-    fig3, axs3 = single_cluster_raster(spikes.times, sl.trials['feedback_times'], trial_idx3, dividers3, colors, labels)
+        
+        trial_idx2, dividers2 = find_trial_ids(sl.trials, sort='choice', order=order)
+        
+        fig, axs = single_cluster_raster(
+                    spikes.times[spikes_idx], sl.trials['stimOn_times'], trial_idx2, dividers2, ['b', 'r'], ['correct', 'incorrect'])
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
+    
+        filename_corr = f'results/stimOn_times_correctness_SCdg_{ids}.png'
+            
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_corr, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
+
+    # only for SCiw region, stimOn_times, correctness 
+    for ids in np.array(SCiw_df['cluster_id'].index):
+
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
+
+        xlabel='T from Stim On(s)'
+        label='T from Stim On (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
+
+        
+        trial_idx2, dividers2 = find_trial_ids(sl.trials, sort='choice', order=order)
+        
+        fig, axs = single_cluster_raster(
+                    spikes.times[spikes_idx], sl.trials['stimOn_times'], trial_idx2, dividers2, ['b', 'r'], ['correct', 'incorrect'])
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
+    
+        filename_corr = f'results/stimOn_times_correctness_SCiw_{ids}.png'
+            
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_corr, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
+
+    # only for SCdg region, stimOn_times, contrasts
+    for ids in np.array(SCdg_df['cluster_id'].index):
+
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
+
+        xlabel='T from Stim On(s)'
+        label='T from Stim On (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
+        
+        contrasts = np.nanmean(np.c_[sl.trials.contrastLeft, sl.trials.contrastRight], axis=1)
+        trial_idx3 = np.argsort(contrasts)
+        dividers3 = list(np.where(np.diff(np.sort(contrasts)) != 0)[0])
+        labels = [str(_ * 100) for _ in np.unique(contrasts)]
+        colors = ['0.9', '0.7', '0.5', '0.3', '0.0']
+        fig, axs = single_cluster_raster(spikes.times[spikes_idx], sl.trials['stimOn_times'], trial_idx3, dividers3, colors, labels)
+
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
+
+        filename_contrasts = f'results/stimOn_times_contrasts_SCdg_{ids}.png'
+            
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_contrasts, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
+
+    # only for SCiw region, stimOn_times, contrasts
+    for ids in np.array(SCiw_df['cluster_id'].index):
+
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
+
+        xlabel='T from Stim On(s)'
+        label='T from Stim On (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
+        
+        contrasts = np.nanmean(np.c_[sl.trials.contrastLeft, sl.trials.contrastRight], axis=1)
+        trial_idx3 = np.argsort(contrasts)
+        dividers3 = list(np.where(np.diff(np.sort(contrasts)) != 0)[0])
+        labels = [str(_ * 100) for _ in np.unique(contrasts)]
+        colors = ['0.9', '0.7', '0.5', '0.3', '0.0']
+        fig, axs = single_cluster_raster(spikes.times[spikes_idx], sl.trials['stimOn_times'], trial_idx3, dividers3, colors, labels)
+
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
+
+        filename_contrasts = f'results/stimOn_times_contrasts_SCiw_{ids}.png'
+            
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_contrasts, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
 
 
-    set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1)
-    set_axis_style(axs[0], ylabel=ylabel0)
-    fig.savefig('results/feedback_time_decision.png')
-    fig2.savefig('results/feedback_time_feedback.png')
-    fig3.savefig('results/feedback_time_contrast.png')
+    ##########
+    #Feedback#
+    ##########
+
+    # only for SCdg region, feedback_times, directions
+    for ids in np.array(SCdg_df['cluster_id'].index):
+
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
+
+        xlabel='T from Feedback(s)'
+        label='T from Feedback (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
+
+        trial_idx, dividers = find_trial_ids(sl.trials, sort='side', order=order)
+        fig, axs = single_cluster_raster(
+                    spikes.times[spikes_idx], sl.trials['feedback_times'], trial_idx, dividers, ['g', 'y'], ['left', 'right'])
+       
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
+
+        filename_raster = f'results/feedback_times_decision_SCdg_{ids}.png'
+        
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_raster, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
+        
+
+
+    # only for SCiw, feedback_times, directions
+    for ids in np.array(SCiw_df['cluster_id'].index):
+
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
+
+        xlabel='T from Feedback(s)'
+        label='T from Feedback (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
+
+        trial_idx, dividers = find_trial_ids(sl.trials, sort='side', order=order)
+        
+        fig, axs = single_cluster_raster(
+                    spikes.times[spikes_idx], sl.trials['feedback_times'], trial_idx, dividers, ['g', 'y'], ['left', 'right'])
+    
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
+
+        filename_raster = f'results/feedback_times_decision_SCiw_{ids}.png'
+            
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_raster, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
+
+    # only for SCdg region, feedback_times, correctness 
+    for ids in np.array(SCdg_df['cluster_id'].index):
+
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
+
+        xlabel='T from Feedback(s)'
+        label='T from Feedback (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
+
+        
+        trial_idx2, dividers2 = find_trial_ids(sl.trials, sort='choice', order=order)
+        
+        fig, axs = single_cluster_raster(
+                    spikes.times[spikes_idx], sl.trials['feedback_times'], trial_idx2, dividers2, ['b', 'r'], ['correct', 'incorrect'])
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
+    
+        filename_corr = f'results/feedback_times_correctness_SCdg_{ids}.png'
+            
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_corr, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
+
+    # only for SCiw region, feedback_times, correctness 
+    for ids in np.array(SCiw_df['cluster_id'].index):
+
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
+
+        xlabel='T from Feedback(s)'
+        label='T from Feedback (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
+
+        
+        trial_idx2, dividers2 = find_trial_ids(sl.trials, sort='choice', order=order)
+        
+        fig, axs = single_cluster_raster(
+                    spikes.times[spikes_idx], sl.trials['feedback_times'], trial_idx2, dividers2, ['b', 'r'], ['correct', 'incorrect'])
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
+    
+        filename_corr = f'results/feedback_times_correctness_SCiw_{ids}.png'
+            
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_corr, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
+
+    # only for SCdg region, feedback_times, contrasts
+    for ids in np.array(SCdg_df['cluster_id'].index):
+
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
+
+        xlabel='T from Feedback(s)'
+        label='T from Feedback (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
+        
+        contrasts = np.nanmean(np.c_[sl.trials.contrastLeft, sl.trials.contrastRight], axis=1)
+        trial_idx3 = np.argsort(contrasts)
+        dividers3 = list(np.where(np.diff(np.sort(contrasts)) != 0)[0])
+        labels = [str(_ * 100) for _ in np.unique(contrasts)]
+        colors = ['0.9', '0.7', '0.5', '0.3', '0.0']
+        fig, axs = single_cluster_raster(spikes.times[spikes_idx], sl.trials['feedback_times'], trial_idx3, dividers3, colors, labels)
+
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
+
+        filename_contrasts = f'results/feedback_times_contrasts_SCdg_{ids}.png'
+            
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_contrasts, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
+
+    # only for SCiw region, feedback_times, contrasts
+    for ids in np.array(SCiw_df['cluster_id'].index):
+
+        spikes_idx = spikes['clusters'] == ids
+        order='trial num'
+
+        xlabel='T from Feedback(s)'
+        label='T from Feedback (s)'
+        ylabel0= 'Firing Rate (Hz)'
+        ylabel1='Sorted Trial Number'
+        
+        contrasts = np.nanmean(np.c_[sl.trials.contrastLeft, sl.trials.contrastRight], axis=1)
+        trial_idx3 = np.argsort(contrasts)
+        dividers3 = list(np.where(np.diff(np.sort(contrasts)) != 0)[0])
+        labels = [str(_ * 100) for _ in np.unique(contrasts)]
+        colors = ['0.9', '0.7', '0.5', '0.3', '0.0']
+        fig, axs = single_cluster_raster(spikes.times[spikes_idx], sl.trials['feedback_times'], trial_idx3, dividers3, colors, labels)
+
+        set_axis_style(axs[0], ylabel=ylabel0, fontsize=16)
+        set_axis_style(axs[1], xlabel=xlabel, ylabel=ylabel1, fontsize=16)
+        fig.suptitle("unit #" + str(ids), fontsize=16)
+
+        filename_contrasts = f'results/feedback_times_contrasts_SCiw_{ids}.png'
+            
+        # Save each figure with the corresponding filename
+        fig.savefig(filename_contrasts, bbox_inches='tight')
+        
+        # Close figures to free memory
+        plt.close(fig)
+
 
 if __name__ == '__main__':
     main()
