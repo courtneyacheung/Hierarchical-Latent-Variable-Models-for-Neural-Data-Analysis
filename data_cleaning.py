@@ -18,6 +18,7 @@ from vlgpax.model import Session
 # import plotly.graph_objects as go
 import pandas as pd
 from pathlib import Path
+import plotly.graph_objects as go
 
 ibl_cache = Path.home() / 'Downloads' / 'IBL_Cache'
 ibl_cache.mkdir(exist_ok=True, parents=True)
@@ -48,6 +49,7 @@ def region_in_good_cluster(insertions, region_name):
 def region_search(acronym, insertions, insertion_idx, label_quality=0.5, event_start_time = 'firstMovement_times'):
     # Select your PID
     pid = insertions[insertion_idx]
+    #print(pid)
     [eid, pname] = one.pid2eid(pid)
     # eid = 'ebe2efe3-e8a1-451a-8947-76ef42427cc9'
     # pname = 'probe00'
@@ -107,8 +109,8 @@ def region_search(acronym, insertions, insertion_idx, label_quality=0.5, event_s
     trials = sl.trials
     return spikes, clusters_good, spikes_g, events, trials, contrast, choice, accuracy
 
-def data_cleaning(region_name, spikes, clusters_good, spikes_g, events, trials, bin_size = 0.05, time_bin_start = -0.1, time_bin_end = 1, time_window_start = 0, time_window_end = 1, random_seed = 0, subregion = True):
-  time_window = np.array([time_window_start, time_window_end])
+def data_cleaning(region_name, spikes, clusters_good, spikes_g, events, trials, bin_size = 0.05, time_bin_start = -0.1, time_bin_end = 1.05, time_window_start = 0, time_window_end = 1, random_seed = 0, subregion = True):
+  #time_window = np.array([time_window_start, time_window_end])
   #events_tw = np.array([events+time_window[0], events+time_window[1]]).T
   #spike_count, cluster_id = get_spike_counts_in_bins(spikes_g['times'], spikes_g['clusters'], events_tw)
   cluster_id = np.unique(spikes_g['clusters'])
@@ -150,4 +152,52 @@ def data_cleaning(region_name, spikes, clusters_good, spikes_g, events, trials, 
   for i in range(num_train, len(ys)):
       sessionTest.add_trial(i, y=ys[i].T)
   return sessionTrain, sessionTest, ys, num_train
+
+#plot_trajectories2L is a function modified from the last year capstone group (Aryan Singh, Jad Makki, Saket Arora, Rishabh Viswanathan).
+#This is their GitHub repository https://github.com/styyxofficial/DSC180B-Quarter-2-Project
+def plot_trajectories2L(z, choices, accuracy, bin_size, region_name = 'SCdg', is_train = True):
+    first = True
+    first2= True
+    if is_train:
+        model_str = 'train'
+    else:
+        model_str = 'test'
+    fig = go.Figure()
+
+    for i in range(len(z)):
+        if ((choices[i]==1) & (accuracy[i]==1)):
+            if first:
+                fig.add_trace(go.Scatter3d(x=np.arange(-100, 1000, bin_size), y=z[i][:, 0], z=z[i][:, 1],
+                        mode='lines', line={'color':'blue', 'width':1}, legendgroup='right', name='Wheel Turned Right', showlegend=True))
+                first = False
+            else:
+                fig.add_trace(go.Scatter3d(x=np.arange(-100, 1000, bin_size), y=z[i][:, 0], z=z[i][:, 1],
+                            mode='lines', line={'color':'blue', 'width':1}, legendgroup='right', showlegend=False))
+
+        elif ((choices[i]==-1) & (accuracy[i]==1)):
+            if first2:
+                fig.add_trace(go.Scatter3d(x=np.arange(-100, 1000, bin_size), y=z[i][:, 0], z=z[i][:, 1],
+                        mode='lines', line={'color':'red', 'width':1}, legendgroup='left', name='Wheel Turned Left', showlegend=True))
+                first2 = False
+            else:
+                fig.add_trace(go.Scatter3d(x=np.arange(-100, 1000, bin_size), y=z[i][:, 0], z=z[i][:, 1],
+                            mode='lines', line={'color':'red', 'width':1}, legendgroup='left', showlegend=False))
+    fig.update_layout(
+        scene = dict(xaxis=dict(
+            title="Time (ms)",
+            title_font=dict(size=28),
+            tickfont=dict(size=14)),
+
+            yaxis=dict(
+            title="Latent Variable 1",
+            title_font=dict(size=28),
+            tickfont=dict(size=14)),
+
+            zaxis=dict(
+            title="Latent Variable 2",
+            title_font=dict(size=28),
+            tickfont=dict(size=14))),
+            width=1000, height=1000, title='Latent Variables over Time' )
+    fig.show()
+    fig.write_html('results/'+str(region_name)+'_'+model_str+'_trajectories_plot.html') 
 
