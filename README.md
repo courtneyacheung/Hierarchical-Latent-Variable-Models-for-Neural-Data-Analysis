@@ -21,7 +21,7 @@ Keeley, Stephen, David Zoltowski, Yiyi Yu, Spencer Smith, and Jonathan Pillow. 2
 Rey, Hernan Gonzalo, Carlos Pedreira, and Rodrigo Quian Quiroga. 2015. “Past, present
 and future of spike sorting techniques.” Brain research bulletin 119: 106–117
 
-Lab, International Brain, Brandon Benson, Julius Benson, Daniel Birman, Niccolo
+International Brain Lab, Brandon Benson, Julius Benson, Daniel Birman, Niccolo
 Bonacchi, Matteo Carandini, Joana A Catarino, Gaelle A Chapuis, Anne K Church-
 land, Yang Dan et al. 2023. “A Brain-Wide Map of Neural Activity during Complex Be-
 haviour.” bioRxiv: 2023–07
